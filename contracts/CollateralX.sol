@@ -58,7 +58,7 @@ contract CollateralX {
     emit Borrowed(msg.sender, amount);
   }
 
-  function repay(uint[] memory indexes, uint amount) external {
+  function repay(uint[] memory indexes) external {
     require(indexes.length > 0, "Please specify at least one loan to repay.");
 
     LoanAccount storage loanAccount = loanAccounts[msg.sender];
@@ -72,10 +72,9 @@ contract CollateralX {
       loan.amount = 0;
     }
 
-    require(repaymentAmount == amount, "Repayment amount is not correct.");
-    require(stablecoinInterface.transferFrom(msg.sender, address(this), amount), "Repayment transfer failed.");
+    require(stablecoinInterface.transferFrom(msg.sender, address(this), repaymentAmount), "Repayment transfer failed.");
 
-    emit Repaid(msg.sender, amount, indexes);
+    emit Repaid(msg.sender, repaymentAmount, indexes);
   }
 
   function withdrawCollateral(uint amount) external {
@@ -94,7 +93,7 @@ contract CollateralX {
     emit CollateralWithdrawn(msg.sender, amount);
   }
   
-  function liquidate(address borrower, uint amount) external {
+  function liquidate(address borrower) external {
     LoanAccount storage loanAccount = loanAccounts[borrower];
     require(loanAccount.collateral > 0, "Borrower has no collateral to liquidate.");
 
@@ -106,10 +105,9 @@ contract CollateralX {
     uint repaymentAmount = calculateRepaymentAmount(borrower, indexes);
 
     require(collateral < repaymentAmount * LIQUIDATION_RATIO / 100, "Borrower has enough collateral to remain healthy.");
-    require(amount == repaymentAmount, "Liquidation amount should be equal to the total debt.");
-    require(stablecoinInterface.transferFrom(msg.sender, address(this), amount), "Liquidation repayment transfer failed.");
+    require(stablecoinInterface.transferFrom(msg.sender, address(this), repaymentAmount), "Liquidation repayment transfer failed.");
 
-    uint settlementEthAmount = convertStablecoinToEth(amount * (100 + LIQUIDATION_REWARD_RATE) / 100);
+    uint settlementEthAmount = convertStablecoinToEth(repaymentAmount * (100 + LIQUIDATION_REWARD_RATE) / 100);
     if (settlementEthAmount > loanAccount.collateral) {
       settlementEthAmount = loanAccount.collateral;
     }
